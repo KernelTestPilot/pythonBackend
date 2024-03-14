@@ -3,7 +3,7 @@ from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from userClass import User
 from flask_session import Session
-from flask_login import LoginManager, current_user, login_user, logout_user
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 import os
 from io import BytesIO
 from PIL import Image
@@ -50,13 +50,15 @@ def set_session(data):
                     active_users[user.id] = user
                     #set sessions to watever the current user is
                     session['age'] = user.age
-                    session['gender'] = user.gender           
+                    session['gender'] = user.gender
+                    get_session()           
         else:
             print("Logging out user")
             logout_user()
 
 
 @socketio.on('get-matches')
+@login_required
 def get_matches():
     current_matches = []
     current_age = session['age']
@@ -92,9 +94,10 @@ def disconnect():
         print(f"User {user_id} disconnected, removed from active_users")
         logout_user()
 
+
 @socketio.on('get-session')
+@login_required
 def get_session():
-   
     print(session.get('user'))
     emit('refresh-session', {
         'session_age': session.get('age', ''),
@@ -103,7 +106,29 @@ def get_session():
         'active_users': list(active_users.keys())  # Send a list of active user IDs
     })
 
+@socketio.on('private-message')
+@login_required
+def handle_private_message(data):
+    recipient_id = data['recipient_id']
+    message = data['message']
+   
+    # Find the recipient's socket ID
+    recipient_sid = None
+    for user_id, user_instance in active_users.items():
+        if user_id == recipient_id:
+                recipient_sid = user_id
 
+    # Find the sender's socket ID
+    sender_sid = request.sid
+
+    # Check if the recipient is online
+    if recipient_sid:
+        # Emit the message to the recipient
+        emit('private-message', {'sender_id': sender_sid, 'message': message}, room=recipient_sid)
+        # Emit acknowledgment to the sender
+        emit('private-message', "Your message was sent successfully.", room=sender_sid)
+    else:
+        print(f"User {recipient_id} is not online.")
 
 if __name__ == '__main__':
     socketio.run(app, debug=True)
