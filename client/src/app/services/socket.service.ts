@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Socket } from 'ngx-socket-io';
+import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 @Injectable({
@@ -28,16 +29,28 @@ import { map } from 'rxjs/operators';
       })
     );
   }
-  refreshMatches() {
-    return this.webSocket.fromEvent('refresh-matches').pipe(
-      map((data: any) => {
-        console.log(data);
-        return data; 
-      })
-    );
+    // this method is used to get response from server
+
+    refreshMatches(): Observable<any[]> {
+      return new Observable<any[]>((observer) => {
+        this.webSocket.on('refresh-matches', (data: any) => {
+          observer.next(data);
+        });
+      });
+    }
+  receieveMessage():Observable<any>{
+    return new Observable<any[]>((observer) => {
+      this.webSocket.on('private-message', (message: any) => {
+        console.log(message)
+        observer.next(message);
+      });
+    })
   }
   getSession() {
    return this.webSocket.emit('get-session');
+  }
+  sendMessege(user_id: any, user_message: any){
+  return this.webSocket.emit('private-message', { recipient_id: user_id, message: user_message })
   }
   getMatches() {
     return this.webSocket.emit('get-matches');
