@@ -24,7 +24,7 @@ export class FileUploadComponent {
 
     reader.onload = (e) => {
       const imageData = (e.target as any).result;
-      this.socketservice.setSession({ user: "oskar", image: imageData });
+      this.socketservice.setSession({ user: "oskar", image: imageData }).subscribe();
     };
 
     reader.readAsDataURL(file);
